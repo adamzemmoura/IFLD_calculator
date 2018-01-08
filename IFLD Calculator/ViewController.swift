@@ -43,23 +43,6 @@ class ViewController: UIViewController {
         
     }
     
-    enum PickerViewTag: Int {
-        case windPicker = 1
-        case tempPicker = 2
-        case runwayPicker = 3
-        case runwayConditionPicker = 4
-    }
-    
-    enum TextFieldTag: Int {
-        case airport = 20
-        case weight = 21
-    }
-    
-    enum TableViewTag: Int {
-        case airport = 30
-        case aircraftVariant = 31
-    }
-    
     // Data model
     fileprivate var landingDistanceCalculator = LandingDistanceCalculator()
     
@@ -209,7 +192,7 @@ class ViewController: UIViewController {
         }
     }
     
-    // MARK: Outlets
+    // MARK:- Outlets
     
     // Aircraft
     @IBOutlet weak var flapSelectionSegmentedControl: UISegmentedControl!
@@ -274,7 +257,7 @@ class ViewController: UIViewController {
     @IBOutlet weak var aircraftVariantTable: UITableView!
     
     
-    // MARK: Actions
+    // MARK:- Actions
     
     @IBAction func engineVariantTapped(_ sender: UITapGestureRecognizer) {
         shouldShowAircraftVariantTable(true)
@@ -617,38 +600,56 @@ extension ViewController: UIPickerViewDelegate, UIPickerViewDataSource {
     
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
         
-        guard let tag = PickerViewTag(rawValue: pickerView.tag) else { return nil }
-        
-        switch tag {
-            case .windPicker :
-                let data = windData[component][row]
-                var dataAsString = String(data)
-                // if compass direction ie. component 0 , add preceding zero if required.
-                if component == 0 {
-                    dataAsString = formatWindData(from: dataAsString)
-                }
-                return dataAsString
-            case .tempPicker:
-                return String(tempratureRange[row])
-            case .runwayPicker :
-                if let selectedAirport = selectedAirport {
-                    if row == 0 {
-                        return "select"
-                    }
-                    return selectedAirport.runways[row-1].name
-                }
-                return "-----"
-            case .runwayConditionPicker :
-                return runwayConditions[row]
+        if pickerView == windPicker {
+            let data = windData[component][row]
+            var dataAsString = String(data)
+            // if compass direction ie. component 0 , add preceding zero if required.
+            if component == 0 {
+                dataAsString = formatWindData(from: dataAsString)
             }
+            return dataAsString
+        }
+        else if pickerView == tempPicker {
+            return String(tempratureRange[row])
+        }
+        else if pickerView == runwayPicker {
+            if let selectedAirport = selectedAirport {
+                if row == 0 {
+                    return "select"
+                }
+                return selectedAirport.runways[row-1].name
+            }
+            return "-----"
+        }
+        else if pickerView == runwayConditionPicker {
+            return runwayConditions[row]
+        }
+        
+        return nil
     }
     
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         
-        let tag = PickerViewTag(rawValue: pickerView.tag)!
-        
-        switch tag {
-        case .runwayPicker :
+        if pickerView == windPicker {
+            var direction: Int = windSelection.direction
+            
+            var speed: Int = windSelection.speed
+            
+            if component == 0 {
+                direction = windData[component][row]
+            }
+            else if component == 1 {
+                speed = windData[component][row]
+            }
+            
+            windSelection = (direction, speed)
+            somethingOnTheUIChanged = true
+        }
+        else if pickerView == tempPicker {
+            tempSelection = tempratureRange[row]
+            somethingOnTheUIChanged = true
+        }
+        else if pickerView == runwayPicker {
             if row != 0 {
                 selectedRunway = selectedAirport!.runways[row-1]
                 if selectedRunway != nil {
@@ -663,26 +664,12 @@ extension ViewController: UIPickerViewDelegate, UIPickerViewDataSource {
                     resetRunwayLabels()
                 }
             }
-        case .windPicker :
-            var direction: Int = windSelection.direction
 
-            var speed: Int = windSelection.speed
-            
-            if component == 0 {
-                direction = windData[component][row]
-            }
-            else if component == 1 {
-                speed = windData[component][row]
-            }
-            
-            windSelection = (direction, speed)
-            somethingOnTheUIChanged = true
-        case .tempPicker :
-            tempSelection = tempratureRange[row]
-            somethingOnTheUIChanged = true
-        case .runwayConditionPicker :
+        }
+        else if pickerView == runwayConditionPicker {
             somethingOnTheUIChanged = true
         }
+        
     }
     
     // Takes a wind direction and adds zeros where necessary eg. 2 becomes 020, 35 becomes 035.
@@ -701,37 +688,35 @@ extension ViewController: UIPickerViewDelegate, UIPickerViewDataSource {
     
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
         
-        guard let tag = PickerViewTag(rawValue: pickerView.tag) else { return 0 }
-        
-        switch tag {
-            case .windPicker : return 2
-            case .tempPicker : return 1
-            case .runwayPicker : return 1
-            case .runwayConditionPicker : return 1
+        if pickerView == windPicker {
+            return 2
         }
+        
+        return 1
         
     }
     
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        guard let tag = PickerViewTag(rawValue: pickerView.tag) else { return 0 }
         
-        switch tag {
-            case .windPicker:
-                if component == 0 {
-                    return windData[component].count
-                }
-                else if component == 1 {
-                    return knots.count // up to 60 knots
-                }
-            case .tempPicker :
-                return tempratureRange.count
-            case .runwayConditionPicker :
-                return runwayConditions.count
-            default:
-                if let selectedAirport = selectedAirport {
-                    return selectedAirport.runways.count + 1
-                }
-                return 1 // to show default message
+        if pickerView == windPicker {
+            if component == 0 {
+                return windData[component].count
+            }
+            else if component == 1 {
+                return knots.count // up to 60 knots
+            }
+        }
+        else if pickerView == tempPicker {
+            return tempratureRange.count
+        }
+        else if pickerView == runwayConditionPicker {
+            return runwayConditions.count
+        }
+        else  {
+            if let selectedAirport = selectedAirport {
+                return selectedAirport.runways.count + 1
+            }
+            return 1 // to show default message
         }
         
         return 0
@@ -748,11 +733,8 @@ extension ViewController: UITextFieldDelegate {
     }
     
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-
-        guard let tag = TextFieldTag(rawValue: textField.tag) else { return false }
         
-        switch tag {
-        case .airport :
+        if textField == airportTextField {
             var searchText = ""
             if let text = textField.text {
                 searchText = text + string
@@ -775,8 +757,8 @@ extension ViewController: UITextFieldDelegate {
             }
             
             return true
-        case .weight :
-            
+        }
+        else if textField == weightTextField {
             let exisitingTextContainsDecimal = textField.text?.contains(".") ?? false
             let newTextContainsDecimal = string.contains(".")
             
@@ -792,15 +774,14 @@ extension ViewController: UITextFieldDelegate {
             }
             
             return true
-
         }
+        
+        return true
     }
     
     func textFieldDidBeginEditing(_ textField: UITextField) {
-        guard let tag = TextFieldTag(rawValue: textField.tag) else { return }
         
-        switch tag {
-        case .airport :
+        if textField == airportTextField {
             resultsStack.isHidden = true
             tickOrCrossStack.isHidden = true
             windStack.isHidden = true
@@ -808,22 +789,19 @@ extension ViewController: UITextFieldDelegate {
             resultsDisplayed = false
             landingDistancesWithSafetyMargins = nil
             
-            
             showAirportTable()
-        case .weight :
-            break
         }
+    
     }
     
     func textFieldDidEndEditing(_ textField: UITextField) {
         somethingOnTheUIChanged = true
-        guard let tag = TextFieldTag(rawValue: textField.tag) else { return }
         
-        switch tag {
-        case .airport :
+        if textField == airportTextField {
             userIsCurrentlyEditingAirport = false
             hideAirportTable()
-        case .weight :
+        }
+        else if textField == weightTextField {
             if let text = textField.text, text != "" {
                 var weightAsDouble = 0.0
                 
@@ -848,39 +826,33 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
-        let tag = TableViewTag(rawValue: tableView.tag)!
-        
-        switch tag {
-        case .airport:
+        if tableView == airportTableView {
             if userIsCurrentlyEditingAirport {
                 return filteredAirports.count
             }
             return airports.count
-        case .aircraftVariant:
+        }
+        else if tableView == aircraftVariantTable {
             return AircraftVariants.variants.count
         }
         
+        return 0
         
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let tag = TableViewTag(rawValue: tableView.tag)!
-        
         let cell = tableView.dequeueReusableCell(withIdentifier: "AirportCell", for: indexPath)
         
-        switch tag {
-            
-        case .airport:
+        if tableView == airportTableView {
             if userIsCurrentlyEditingAirport {
                 cell.textLabel?.text = filteredAirports[indexPath.row].name
             }
             else {
                 cell.textLabel?.text = airports[indexPath.row].name
             }
-            
-        case .aircraftVariant:
-            
+        }
+        else if tableView == aircraftVariantTable {
             cell.textLabel?.text = AircraftVariants.variants[indexPath.row]
         }
         
@@ -889,10 +861,19 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        let tag = TableViewTag(rawValue: tableView.tag)!
-        
-        switch tag {
-        case .airport :
+        if tableView == aircraftVariantTable {
+            print("\(AircraftVariants.variants[indexPath.row]) selected")
+            let variant = AircraftVariant(rawValue: AircraftVariants.variants[indexPath.row])!
+            switch variant {
+            case .twoHundreds:
+                aircraftVariantLabel.text = "\(AircraftVariants.variants[indexPath.row])"
+            default:
+                alertWithMessage(message: "App does not currently support \(variant.rawValue).\nComing soon...")
+                aircraftVariantLabel.text = AircraftVariant.twoHundreds.rawValue
+            }
+            shouldShowAircraftVariantTable(false)
+        }
+        else if tableView == airportTableView {
             selectedAirport = nil
             
             if userIsCurrentlyEditingAirport {
@@ -913,20 +894,8 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
             windStack.isHidden = true
             crosswindWarningLabel.isHidden = true
             resultsDisplayed = false
-            
-        case .aircraftVariant:
-            print("\(AircraftVariants.variants[indexPath.row]) selected")
-            let variant = AircraftVariant(rawValue: AircraftVariants.variants[indexPath.row])!
-            switch variant {
-            case .twoHundreds:
-                aircraftVariantLabel.text = "\(AircraftVariants.variants[indexPath.row])"
-            default:
-                alertWithMessage(message: "App does not currently support \(variant.rawValue).\nComing soon...")
-                aircraftVariantLabel.text = AircraftVariant.twoHundreds.rawValue
-            }
-            shouldShowAircraftVariantTable(false)
-            
         }
+        
     }
     
     private func alertWithMessage(message: String) {
